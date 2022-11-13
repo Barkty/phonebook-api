@@ -1,13 +1,19 @@
 import express from "express";
 import imageUpload from "../middlewares/upload/imageUpload.js";
-import { createContact, deleteContact, getContacts, updateContact } from '../controllers/Contact.js'
+import ContactController from '../controllers/Contact.js'
 
 const router = express.Router();
 
-router.post('/', createContact)
-router.patch('/:id', imageUpload.array('avatar'), updateContact)
-router.get('/', getContacts)
-router.delete('/delete/:id', deleteContact)
+const contactController = new ContactController()
 
+router.post('/', contactController.createContact)
+router.patch('/:id', imageUpload.array('avatar'), contactController.updateContact)
+router.get('/', contactController.getContacts)
+router.delete('/delete/:id', contactController.deleteContact)
+
+// Bulk routes
+router.post('/bulk', contactController.createBulkContacts)
+router.patch('/bulk/update', contactController.updateBulkContacts)
+router.delete('/bulk/delete', contactController.deleteBulkContacts)
 
 export default router;
