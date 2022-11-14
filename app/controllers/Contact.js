@@ -77,6 +77,36 @@ class ContactController {
             throw error
         }
     })
+
+    /**
+     * * getContact - Gets a contacts
+    */
+
+    getContact = asyncWrapper(async (req, res) => {
+
+        try {
+            const { id } = req.params
+
+            const contact = await Contact.findOne({_id: id})
+
+            if(!contact) {
+
+                res.status(404).json({
+                    message: 'Contact Not Found',
+                    success: 0
+                })
+
+            } else {
+                res.status(200).json({
+                    message: 'Contact details',
+                    data: contact,
+                    success: 1
+                })
+            }
+        } catch (error) {
+            throw error
+        }
+    })
     
     /**
      * * updateContact - Update a contact
@@ -153,7 +183,7 @@ class ContactController {
             } else {
     
                 res.status(200).json({
-                    message: "Contact Deleted",
+                    message: "Contact Deleted Successfully",
                     data: contact,
                     success: 1,
                 });

@@ -10,6 +10,7 @@ router.post('/', contactController.createContact)
 router.patch('/:id', imageUpload.array('avatar'), contactController.updateContact)
 router.get('/', contactController.getContacts)
 router.delete('/delete/:id', contactController.deleteContact)
+router.get('/:id', contactController.getContact)
 
 // Bulk routes
 router.post('/bulk', contactController.createBulkContacts)
