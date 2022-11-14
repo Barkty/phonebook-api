@@ -116,12 +116,12 @@ class ContactController {
         try {
             const contactId = req.params.id;
     
-            const { path } = req?.files[0];
+            // const { path } = req?.files[0];
     
-            const updateContact = {
-                ...req.body,
-                avatar: path
-            }
+            // const updateContact = {
+            //     ...req.body,
+            //     avatar: path
+            // }
     
             let contact = await Contact.findOne({
                 _id: contactId,
@@ -140,7 +140,7 @@ class ContactController {
                     {
                         _id: contactId,
                     },
-                    updateContact,
+                    req.body,
                     {
                         new: true,
                         runValidators: true,
@@ -148,7 +148,7 @@ class ContactController {
                 )
         
                 res.status(200).json({
-                    message: "Contact updated",
+                    message: "Contact updated sucessfully",
                     data: contact,
                     success: 1,
                 });
