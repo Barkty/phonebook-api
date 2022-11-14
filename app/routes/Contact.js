@@ -15,6 +15,6 @@ router.get('/:id', contactController.getContact)
 // Bulk routes
 router.post('/bulk', contactController.createBulkContacts)
 router.patch('/bulk/update', contactController.updateBulkContacts)
-router.delete('/bulk/delete', contactController.deleteBulkContacts)
+router.post('/bulk/delete', contactController.deleteBulkContacts)
 
 export default router;

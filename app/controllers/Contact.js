@@ -281,15 +281,12 @@ class ContactController {
     deleteBulkContacts = asyncWrapper(async (req, res) => {
 
         try {
-            const { body } = req
-            let contact = []
+            const { ids } = req.body
+            const data = ids.split('#')
 
-            for(let i = 0; i < body.length; i++) {
-
-                contact = await Contact.deleteMany(
-                    {_id: body[i]._id}
-                );
-            }
+            const contact = await Contact.deleteMany(
+                {_id: {'$in': data }}
+            );
 
             if(contact) {
 
