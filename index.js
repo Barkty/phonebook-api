@@ -29,15 +29,15 @@ app.use(notFound);
  * HANDLING UNCAUGHT EXCEPTION ERRORS
  * Process.traceDeprecation = true;
  */
- process.on("uncaughtException", (err) => {
-    console.log(
-      `UNCAUGHT EXCEPTION! Server Shutting down...\n
-        ${err.name} \n ${err.message} \n ${err.stack}`
-    );
-    process.exit(1);
-  });
+process.on("uncaughtException", (err) => {
+  console.log(
+    `UNCAUGHT EXCEPTION! Server Shutting down...\n
+      ${err.name} \n ${err.message} \n ${err.stack}`
+  );
+  process.exit(1);
+});
 
-const HOSTNAME = process.env.HOST;
+let HOSTNAME = process.env.HOST || '';
 const PORT = process.env.PORT;
 const MONGO_URI =
   process.env.NODE_ENV !== "production"
@@ -51,7 +51,7 @@ const server_start = async () => {
       console.log("DB successfully connected.");
     });
 
-    app.listen(PORT, HOSTNAME, () =>
+    app.listen(PORT, () =>
       console.log(`Server is listening on port ${PORT}...`)
     );
   } catch (error) {
