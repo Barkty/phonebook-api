@@ -6,6 +6,7 @@ dotenv.config('.');
 
 import morgan from "morgan";
 import cors from "cors";
+import { __dirname } from "./__Globals.js";
 import notFound from "./app/middlewares/notFound.js";
 
 //import routes
@@ -17,11 +18,14 @@ const app = express();
 app.use(cors());
 app.use(morgan("tiny"));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // routes
 const apiPath = "/api";
 app.use(apiPath + "/", homeRoutes);
 app.use(apiPath + "/contact", contactRoutes);
+
+global.__basedir = __dirname + '/app/assets/'
 
 
 app.use(notFound);

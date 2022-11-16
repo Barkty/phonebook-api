@@ -1,6 +1,9 @@
 import Contact from "../models/Contact.js";
 import asyncWrapper from "../middlewares/async.js";
 import _ from 'underscore'
+import fs from 'fs'
+import csv from 'fast-csv'
+import readXlsxFile from "read-excel-file/node";
 
 
 class ContactController {
@@ -199,47 +202,103 @@ class ContactController {
 
         try {
 
-            const { body } = req
-            let contact = []
-            let found = 0
-            let freshContactsToAdd = ''
-            
-            for(let i = 0; i < body.length; i++) {
+            if (req.file == undefined) {
 
-               //Check if contact already exist
-                contact.push(await Contact.findOne({
-                    phone: body[i].phone,
-                }));
- 
-            }
-            
-            if(contact?.length > 0) {
-
-                for(let i = 0; i < contact?.length; i++) {
-
-                    found = _.findIndex(body, {...contact[i]?.phone})
-                    console.log(found)
-                    freshContactsToAdd = body.slice(found, i)
-                }
-
-                console.log('Fresh: ', freshContactsToAdd)
-                const newContacts = await Contact.insertMany(freshContactsToAdd)
-    
-                res.status(200).json({
-                    message: [
-                        freshContactsToAdd.length > 0 && {success: "Contact added successfully."},
-                        contact.length > 0 && {userError: `${contact.length} contacts already exist.`}
-                    ],
-                    data: newContacts,
-                    success: 1,
+                res.status(400).json({
+                    message: "Please upload an excel file!",
+                    success: 0
                 });
+
+            } else {
+
+                let contacts = []
+                let path = __basedir + '/' + req.file.filename;
+
+                readXlsxFile(path).then(async (rows) => {
+                    // skip header
+                    rows.shift();
+              
+                    rows.forEach((row) => {
+                      let contact = {
+                        firstName: row[1],
+                        lastName: row[2],
+                        phone: row[3],
+                        gender: row[4],
+                      };
+              
+                      contacts.push(contact);
+                    });
+              
+                    const newContacts = await Contact.insertMany(contacts)
+    
+                    if(newContacts) {
+    
+                        res.status(200).json({
+                            message: `File uploaded successfully: ${req.file.originalname}`,
+                            data: newContacts,
+                            success: 1,
+                        })
+                        
+                    } else {
+    
+                        res.status(500).json({
+                            message: `Failed to import data into database`,
+                            success: 0,
+                        })
+    
+                    }
+                })
             }
 
-        } catch (error) {
 
-            throw error
-
+          
+        } catch (e) {
+            throw e
         }
+
+        // try {
+
+        //     const { body } = req
+        //     let contact = []
+        //     let found = 0
+        //     let freshContactsToAdd = ''
+            
+        //     for(let i = 0; i < body.length; i++) {
+
+        //        //Check if contact already exist
+        //         contact.push(await Contact.findOne({
+        //             phone: body[i].phone,
+        //         }));
+ 
+        //     }
+            
+        //     if(contact?.length > 0) {
+
+        //         for(let i = 0; i < contact?.length; i++) {
+
+        //             found = _.findIndex(body, {...contact[i]?.phone})
+        //             console.log(found)
+        //             freshContactsToAdd = body.slice(found, i)
+        //         }
+
+        //         console.log('Fresh: ', freshContactsToAdd)
+        //         const newContacts = await Contact.insertMany(freshContactsToAdd)
+    
+        //         res.status(200).json({
+        //             message: [
+        //                 freshContactsToAdd.length > 0 && {success: "Contact added successfully."},
+        //                 contact.length > 0 && {userError: `${contact.length} contacts already exist.`}
+        //             ],
+        //             data: newContacts,
+        //             success: 1,
+        //         });
+        //     }
+
+        // } catch (error) {
+
+        //     throw error
+
+        // }
     })
 
     updateBulkContacts = asyncWrapper(async (req, res) => {
@@ -247,6 +306,7 @@ class ContactController {
         try {
 
             const { body } = req
+            console.log(body)
             let contact = []
             let updates;
             
