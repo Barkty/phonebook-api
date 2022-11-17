@@ -15,7 +15,8 @@ router.get('/:id', contactController.getContact)
 
 // Bulk routes
 router.post('/bulk', uploadFile.single('file'), contactController.createBulkContacts)
-router.patch('/bulk/update', contactController.updateBulkContacts)
-router.post('/bulk/delete', contactController.deleteBulkContacts)
+router.patch('/bulk/update', uploadFile.single('file'), contactController.updateBulkContacts)
+router.post('/bulk/delete',  uploadFile.single('file'), contactController.deleteBulkContacts)
+router.post('/bulk/delete/id', contactController.deleteBulkContactsById)
 
 export default router;

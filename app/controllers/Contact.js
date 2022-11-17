@@ -1,17 +1,12 @@
 import Contact from "../models/Contact.js";
 import asyncWrapper from "../middlewares/async.js";
-import _ from 'underscore'
-import fs from 'fs'
-import csv from 'fast-csv'
 import readXlsxFile from "read-excel-file/node";
 
 
 class ContactController {
     constructor(){}
 
-
     //Single writes
-
     /**
      * * createContact - Create a new contact
     */
@@ -197,7 +192,9 @@ class ContactController {
     })
 
     // Bulk writes
-
+    /**
+     * * createBulkContacts - Create bulk contacts via upload
+     */
     createBulkContacts = asyncWrapper(async (req, res) => {
 
         try {
@@ -228,13 +225,13 @@ class ContactController {
               
                       contacts.push(contact);
                     });
-              
-                    const newContacts = await Contact.insertMany(contacts)
+
+                    const newContacts = await Contact.insertMany(contacts, { ordered: true })
     
                     if(newContacts) {
     
                         res.status(200).json({
-                            message: `File uploaded successfully: ${req.file.originalname}`,
+                            message: `Contacts uploaded successfully: ${req.file.originalname}`,
                             data: newContacts,
                             success: 1,
                         })
@@ -256,89 +253,82 @@ class ContactController {
             throw e
         }
 
-        // try {
-
-        //     const { body } = req
-        //     let contact = []
-        //     let found = 0
-        //     let freshContactsToAdd = ''
-            
-        //     for(let i = 0; i < body.length; i++) {
-
-        //        //Check if contact already exist
-        //         contact.push(await Contact.findOne({
-        //             phone: body[i].phone,
-        //         }));
- 
-        //     }
-            
-        //     if(contact?.length > 0) {
-
-        //         for(let i = 0; i < contact?.length; i++) {
-
-        //             found = _.findIndex(body, {...contact[i]?.phone})
-        //             console.log(found)
-        //             freshContactsToAdd = body.slice(found, i)
-        //         }
-
-        //         console.log('Fresh: ', freshContactsToAdd)
-        //         const newContacts = await Contact.insertMany(freshContactsToAdd)
-    
-        //         res.status(200).json({
-        //             message: [
-        //                 freshContactsToAdd.length > 0 && {success: "Contact added successfully."},
-        //                 contact.length > 0 && {userError: `${contact.length} contacts already exist.`}
-        //             ],
-        //             data: newContacts,
-        //             success: 1,
-        //         });
-        //     }
-
-        // } catch (error) {
-
-        //     throw error
-
-        // }
     })
 
+    /**
+     * * updateBulkContacts - Update bulk contacts via upload
+     */
     updateBulkContacts = asyncWrapper(async (req, res) => {
 
         try {
 
-            const { body } = req
-            console.log(body)
-            let contact = []
-            let updates;
-            
-            for(let i = 0; i < body.length; i++) {
+            if (req.file == undefined) {
 
-                //Check if contact already exist
-                contact.push(await Contact.findOne({
-                    phone: body[i].phone,
-                }));
-  
+                res.status(400).json({
+                    message: "Please upload an excel file!",
+                    success: 0
+                });
+
+            } else {
+
+                let contacts = []
+                let updatedContacts;
+                let path = __basedir + '/' + req.file.filename;
+
+                readXlsxFile(path).then(async (rows) => {
+                    // skip header
+                    rows.shift();
+              
+                    rows.forEach((row) => {
+                      let contact = {
+                        firstName: row[1],
+                        lastName: row[2],
+                        phone: row[3],
+                        gender: row[4],
+                      };
+              
+                      contacts.push(contact);
+                    });
+
+                    for(let i = 0; i < contacts.length; i++) {
+
+                        updatedContacts = await Contact.updateMany(
+                            {phone: contacts[i].phone},
+                            { $set: { firstName: contacts[i].firstName, lastName: contacts[i].lastName, phone: contacts[i].phone, gender: contacts[i].gender }},
+                            {upsert: true}
+                        )
+                    }
+    
+                    if(updatedContacts) {
+    
+                        res.status(200).json({
+                            message: `Contacts updated successfully: ${req.file.originalname}`,
+                            data: updatedContacts,
+                            success: 1,
+                        })
+                        
+                    } else {
+    
+                        res.status(500).json({
+                            message: `Failed to import data into database`,
+                            success: 0,
+                        })
+    
+                    }
+                })
             }
 
-            for(let i = 0; i < contact.length; i++) {
 
-                updates = await Contact.updateMany(
-                    {phone: contact[i].phone},
-                    {$set: {...body}}
-                )
-            }
-
-            res.status(200).json({
-                message: "Contacts updated",
-                data: updates,
-                success: 1,
-            });
-
-        } catch (error) {
-            throw error
+          
+        } catch (e) {
+            throw e
         }
     })
 
-    deleteBulkContacts = asyncWrapper(async (req, res) => {
+    /**
+     * * deleteBulkContactsById - Delete bulk contacts via _id
+     */
+    deleteBulkContactsById = asyncWrapper(async (req, res) => {
 
         try {
             const { ids } = req.body
@@ -359,6 +349,76 @@ class ContactController {
             
         } catch (error) {
             throw error
+        }
+    })
+
+    /**
+     * * deleteBulkContacts - Create bulk contacts via upload
+     */
+
+    deleteBulkContacts = asyncWrapper(async (req, res) => {
+
+        try {
+            console.log(req.file)
+
+            if (req.file == undefined) {
+
+                res.status(400).json({
+                    message: "Please upload an excel file!",
+                    success: 0
+                });
+
+            } else {
+
+                let contacts = []
+                let updatedContacts;
+                let path = __basedir + '/' + req.file.filename;
+
+                readXlsxFile(path).then(async (rows) => {
+                    // skip header
+                    rows.shift();
+              
+                    rows.forEach((row) => {
+                      let contact = {
+                        firstName: row[1],
+                        lastName: row[2],
+                        phone: row[3],
+                        gender: row[4],
+                      };
+              
+                      contacts.push(contact);
+                    });
+
+                    for(let i = 0; i < contacts.length; i++) {
+
+                        updatedContacts = await Contact.deleteMany(
+                            {phone: contacts[i].phone}
+                        )
+                    }
+    
+                    if(updatedContacts) {
+    
+                        res.status(200).json({
+                            message: `Contacts deleted successfully: ${req.file.originalname}`,
+                            data: updatedContacts,
+                            success: 1,
+                        })
+                        
+                    } else {
+    
+                        res.status(500).json({
+                            message: `Failed to import data into database`,
+                            success: 0,
+                        })
+    
+                    }
+                })
+            }
+
+
+          
+        } catch (e) {
+            throw e
         }
     })
 }
