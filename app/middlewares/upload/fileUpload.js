@@ -1,7 +1,6 @@
 import multer from "multer";
 
 const csvFilter = (req, file, cb) => {
-  console.log(file)
     if (file.mimetype.includes("excel") || file.mimetype.includes("spreadsheetml")) {
       cb(null, true); 
     } else {
