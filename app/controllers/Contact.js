@@ -57,8 +57,10 @@ class ContactController {
     getContacts = asyncWrapper(async (req, res) => {
     
         try {
-            const { contact } = req.query;
+            const { query: { contact } } = req;
+
             let contacts = [];
+            
             if (contact) {
                 contacts = await Contact.find({ firstName: new RegExp(".*^"+contact+".*", "i") });
             } else {
@@ -83,7 +85,7 @@ class ContactController {
     getContact = asyncWrapper(async (req, res) => {
 
         try {
-            const { id } = req.params
+            const { params: { id } } = req
 
             const contact = await Contact.findOne({_id: id})
 
@@ -112,7 +114,7 @@ class ContactController {
     updateContact = asyncWrapper(async (req, res) => {
     
         try {
-            const contactId = req.params.id;
+            const { params: { id } } = req;
     
             // const { path } = req?.files[0];
     
@@ -122,7 +124,7 @@ class ContactController {
             // }
     
             let contact = await Contact.findOne({
-                _id: contactId,
+                _id: id,
             });
     
             if (!contact) {
@@ -136,7 +138,7 @@ class ContactController {
     
                 contact = await Contact.findOneAndUpdate(
                     {
-                        _id: contactId,
+                        _id: id,
                     },
                     req.body,
                     {
@@ -166,15 +168,16 @@ class ContactController {
     deleteContact = asyncWrapper(async (req, res) => {
     
         try {
-            const contactId = req.params.id;
+            const { params: { id } } = req;
+
             const contact = await Contact.findOneAndDelete({
-                _id: contactId,
+                _id: id,
             });
     
             if (!contact) {
     
                 res.status(404).json({
-                    message: `No contact with id: ${contactId}`,
+                    message: `No contact with id: ${id}`,
                     success: 0,
                 });
     
@@ -226,6 +229,11 @@ class ContactController {
                       contacts.push(contact);
                     });
 
+                    //Search for duplicates
+
+                    //Return counts of duplicates
+
+                    //Save 
                     const newContacts = await Contact.insertMany(contacts, { ordered: true })
     
                     if(newContacts) {
@@ -262,6 +270,8 @@ class ContactController {
 
         try {
 
+            const { file: { filename, originalname } } = req
+
             if (req.file == undefined) {
 
                 res.status(400).json({
@@ -273,7 +283,7 @@ class ContactController {
 
                 let contacts = []
                 let updatedContacts;
-                let path = __basedir + '/' + req.file.filename;
+                let path = __basedir + '/' + filename;
 
                 readXlsxFile(path).then(async (rows) => {
                     // skip header
@@ -302,7 +312,7 @@ class ContactController {
                     if(updatedContacts) {
     
                         res.status(200).json({
-                            message: `Contacts updated successfully: ${req.file.originalname}`,
+                            message: `Contacts updated successfully: ${originalname}`,
                             data: updatedContacts,
                             success: 1,
                         })
@@ -331,7 +341,8 @@ class ContactController {
     deleteBulkContactsById = asyncWrapper(async (req, res) => {
 
         try {
-            const { ids } = req.body
+            const { body: { ids } } = req
+
             const data = ids.split('#')
 
             const contact = await Contact.deleteMany(
@@ -359,7 +370,8 @@ class ContactController {
     deleteBulkContacts = asyncWrapper(async (req, res) => {
 
         try {
-            console.log(req.file)
+            
+            const { file: { filename, originalname } } = req
 
             if (req.file == undefined) {
 
@@ -372,7 +384,7 @@ class ContactController {
 
                 let contacts = []
                 let updatedContacts;
-                let path = __basedir + '/' + req.file.filename;
+                let path = __basedir + '/' + filename;
 
                 readXlsxFile(path).then(async (rows) => {
                     // skip header
@@ -399,7 +411,7 @@ class ContactController {
                     if(updatedContacts) {
     
                         res.status(200).json({
-                            message: `Contacts deleted successfully: ${req.file.originalname}`,
+                            message: `Contacts deleted successfully: ${originalname}`,
                             data: updatedContacts,
                             success: 1,
                         })
