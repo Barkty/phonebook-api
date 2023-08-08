@@ -1,8 +1,14 @@
+import { Types } from "mongoose"
 import Contact from "../models/Contact.js";
 import asyncWrapper from "../middlewares/async.js";
-import readXlsxFile from "read-excel-file/node";
+import BadRequest from "../utils/errors/badRequest.js";
+import { error, success } from "../helpers/response.js";
+import { generateFilter } from "../utils/index.js";
+import { paginate } from "../helpers/paginate.js";
+import { createCustomError } from "../utils/errors/customError.js";
+import { downloadExcelFileETL } from "../services/storage.js";
 
-
+const { ObjectId } = Types
 class ContactController {
 
     //Single writes
@@ -14,38 +20,27 @@ class ContactController {
         try {
             
             const {
-                body: { phone },
+                body: { phone }, file, user: { _id }
             } = req;
-        
-            //Check if contact already exist
-            const contact = await Contact.findOne({
-                phone: phone,
-            });
-        
-            if (contact) {
-    
-                res.status(400).json({
-                    message: "A contact with this phone number already exists.",
-                    success: 0,
-                });
-                
-            } else {
-    
-                const newContact = await Contact.create({
-                    ...req.body
-                })
-            
-                res.status(200).json({
-                    message: "Contact added successfully.",
-                    data: newContact,
-                    success: 1,
-                });
+
+            let query = { ...req.body, userId: ObjectId(_id) }
+
+            if (file?.path) {
+                query = { ...query, avatar: file?.path }
             }
         
+            //Check if contact already exist
+            let contact = await Contact.findOne({ phone });
+        
+            if (contact) throw new BadRequest('Contact already exists')
+                
+            contact = await Contact({ ...query }).save()
+
+            return success(res, 201, contact)
     
-        } catch (error) {
+        } catch (e) {
     
-            throw error
+            return error(res, 500, e)
         }
     
     })
@@ -56,24 +51,18 @@ class ContactController {
     getContacts = asyncWrapper(async (req, res) => {
     
         try {
-            const { query: { contact } } = req;
+            const { query: { page, limit }, user: { _id } } = req;
 
-            let contacts = [];
-            
-            if (contact) {
-                contacts = await Contact.find({ firstName: new RegExp(".*^"+contact+".*", "i") });
-            } else {
-                contacts = await Contact.find({});
-            }
+            const filter = generateFilter({...req.query, userId: _id })
+
+            const options = { page, limit, filter, modelName: "Contact", sort: { createdAt: -1 }}
+
+            const contacts = await paginate(options)
+
+            return success(res, 200, contacts)
     
-            res.status(200).json({
-                message: "All Contacts",
-                data: contacts,
-                success: 1,
-            });
-    
-        } catch (error) {
-            throw error
+        } catch (e) {
+            return error(res, 500, e)
         }
     })
 
@@ -86,24 +75,13 @@ class ContactController {
         try {
             const { params: { id } } = req
 
-            const contact = await Contact.findOne({_id: id})
+            const contact = await Contact.findById({_id: id}).lean()
 
-            if(!contact) {
+            if(!contact) throw createCustomError('Contact not found', 404)
 
-                res.status(404).json({
-                    message: 'Contact Not Found',
-                    success: 0
-                })
-
-            } else {
-                res.status(200).json({
-                    message: 'Contact details',
-                    data: contact,
-                    success: 1
-                })
-            }
-        } catch (error) {
-            throw error
+            return success(res, 200, contact)
+        } catch (e) {
+            return error(res, 500, e)
         }
     })
     
@@ -113,50 +91,23 @@ class ContactController {
     updateContact = asyncWrapper(async (req, res) => {
     
         try {
-            const { params: { id } } = req;
+            const { params: { id }, body, file } = req;
     
-            // const { path } = req?.files[0];
-    
-            // const updateContact = {
-            //     ...req.body,
-            //     avatar: path
-            // }
-    
-            let contact = await Contact.findOne({
-                _id: id,
-            });
-    
-            if (!contact) {
-    
-                res.status(404).json({
-                    message: "Contact not found",
-                    success: 0,
-                });
-    
-            } else {
-    
-                contact = await Contact.findOneAndUpdate(
-                    {
-                        _id: id,
-                    },
-                    req.body,
-                    {
-                        new: true,
-                        runValidators: true,
-                    }
-                )
-        
-                res.status(200).json({
-                    message: "Contact updated sucessfully",
-                    data: contact,
-                    success: 1,
-                });
+            let query = { ...body }
+
+            if(file?.path) {
+                query = { ...query, avatar: file.path }
             }
     
+            let contact = await Contact.findById({_id: id }).lean();
     
-        } catch (error) {
+            if(!contact) throw createCustomError('Contact not found', 404)
+
+            contact = await Contact.findByIdAndUpdate({_id: id }, { $set: { ...query }},{ new: true } ).lean()
     
-            throw error
+            return success(res, 200, contact)
+        } catch (e) {
+            return error(res, 500, e)
     
         }
     })
@@ -169,27 +120,13 @@ class ContactController {
         try {
             const { params: { id } } = req;
 
-            const contact = await Contact.findOneAndDelete({
-                _id: id,
-            });
+            const contact = await Contact.findByIdAndDelete({_id: id });
     
-            if (!contact) {
-    
-                res.status(404).json({
-                    message: `No contact with id: ${id}`,
-                    success: 0,
-                });
-    
-            } else {
-    
-                res.status(200).json({
-                    message: "Contact Deleted Successfully",
-                    data: contact,
-                    success: 1,
-                });
-            }
-        } catch (error) {
-            throw error
+            if(!contact) throw createCustomError('Contact not found', 404)
+
+            return success(res, 200, contact)
+        } catch (e) {
+            return error(res, 500, e)
         }
     })
 
@@ -201,63 +138,34 @@ class ContactController {
 
         try {
 
-            if (req.file == undefined) {
+            const { file: { path }, user: { _id } } = req
 
-                res.status(400).json({
-                    message: "Please upload an excel file!",
-                    success: 0
-                });
+            const rows = await downloadExcelFileETL(path)
 
-            } else {
+            const importError = []
+            const importData = []
 
-                let contacts = []
-                let path = __basedir + '/' + req.file.filename;
+            await Promise.all(
+                rows.map(async (row) => {
+                    const contact = {
+                        firstName: row["First name"],
+                        lastName: row["Last name"],
+                        phone: row["Phone"],
+                        gender: row["Gender"],
+                        userId: _id
+                    };
 
-                readXlsxFile(path).then(async (rows) => {
-                    // skip header
-                    rows.shift();
-              
-                    rows.forEach((row) => {
-                      let contact = {
-                        firstName: row[1],
-                        lastName: row[2],
-                        phone: row[3],
-                        gender: row[4],
-                      };
-              
-                      contacts.push(contact);
-                    });
+                    let data = await Contact.create(contact).catch((e) => {
+                        importError.push({ data: contact, e })
+                    })
 
-                    //Search for duplicates
-
-                    //Return counts of duplicates
-
-                    //Save 
-                    const newContacts = await Contact.insertMany(contacts, { ordered: true })
-    
-                    if(newContacts) {
-    
-                        res.status(200).json({
-                            message: `Contacts uploaded successfully: ${req.file.originalname}`,
-                            data: newContacts,
-                            success: 1,
-                        })
-                        
-                    } else {
-    
-                        res.status(500).json({
-                            message: `Failed to import data into database`,
-                            success: 0,
-                        })
-    
-                    }
+                    importData.push(data)
                 })
-            }
-
-
+            )
           
+            return success(res, 201, { importData, importError })
         } catch (e) {
-            throw e
+            return error(res, 500, e)
         }
 
     })
@@ -269,68 +177,34 @@ class ContactController {
 
         try {
 
-            const { file: { filename, originalname } } = req
+            const { file: { path }, user: { _id } } = req
 
-            if (req.file == undefined) {
+            const rows = await downloadExcelFileETL(path)
 
-                res.status(400).json({
-                    message: "Please upload an excel file!",
-                    success: 0
-                });
+            const importError = []
+            const importData = []
 
-            } else {
+            await Promise.all(
+                rows.map(async (row) => {
+                    const contact = {
+                        firstName: row["First name"],
+                        lastName: row["Last name"],
+                        phone: row["Phone"],
+                        gender: row["Gender"],
+                        userId: _id
+                    };
 
-                let contacts = []
-                let updatedContacts;
-                let path = __basedir + '/' + filename;
+                    let data = await Contact.updateOne({ phone: contact.phone }, { $set: { ...contact }}, { new: true }).catch((e) => {
+                        importError.push({ data: contact, e })
+                    })
 
-                readXlsxFile(path).then(async (rows) => {
-                    // skip header
-                    rows.shift();
-              
-                    rows.forEach((row) => {
-                      let contact = {
-                        firstName: row[1],
-                        lastName: row[2],
-                        phone: row[3],
-                        gender: row[4],
-                      };
-              
-                      contacts.push(contact);
-                    });
-
-                    for(let i = 0; i < contacts.length; i++) {
-
-                        updatedContacts = await Contact.updateMany(
-                            {phone: contacts[i].phone},
-                            { $set: { firstName: contacts[i].firstName, lastName: contacts[i].lastName, phone: contacts[i].phone, gender: contacts[i].gender }},
-                            {upsert: true}
-                        )
-                    }
-    
-                    if(updatedContacts) {
-    
-                        res.status(200).json({
-                            message: `Contacts updated successfully: ${originalname}`,
-                            data: updatedContacts,
-                            success: 1,
-                        })
-                        
-                    } else {
-    
-                        res.status(500).json({
-                            message: `Failed to import data into database`,
-                            success: 0,
-                        })
-    
-                    }
+                    importData.push(data)
                 })
-            }
-
-
+            )
           
+            return success(res, 200, { importData, importError })
         } catch (e) {
-            throw e
+            return error(res, 500, e)
         }
     })
 
@@ -344,21 +218,12 @@ class ContactController {
 
             const data = ids.split('#')
 
-            const contact = await Contact.deleteMany(
-                {_id: {'$in': data }}
-            );
+            const contacts = await Contact.deleteMany({ _id: { $in: data }});
 
-            if(contact) {
-
-                res.status(200).json({
-                    message: "Contact Deleted",
-                    data: contact,
-                    success: 1,
-                });
-            }
+            return success(res, 200, contacts)
             
-        } catch (error) {
-            throw error
+        } catch (e) {
+            return error(res, 500, e)
         }
     })
 
@@ -369,71 +234,37 @@ class ContactController {
     deleteBulkContacts = asyncWrapper(async (req, res) => {
 
         try {
-            
-            const { file: { filename, originalname } } = req
 
-            if (req.file == undefined) {
+            const { file: { path }, user: { _id } } = req
 
-                res.status(400).json({
-                    message: "Please upload an excel file!",
-                    success: 0
-                });
+            const rows = await downloadExcelFileETL(path)
 
-            } else {
+            const importError = []
+            const importData = []
 
-                let contacts = []
-                let updatedContacts;
-                let path = __basedir + '/' + filename;
+            await Promise.all(
+                rows.map(async (row) => {
+                    const contact = {
+                        firstName: row["First name"],
+                        lastName: row["Last name"],
+                        phone: row["Phone"],
+                        gender: row["Gender"],
+                        userId: _id
+                    };
 
-                readXlsxFile(path).then(async (rows) => {
-                    // skip header
-                    rows.shift();
-              
-                    rows.forEach((row) => {
-                      let contact = {
-                        firstName: row[1],
-                        lastName: row[2],
-                        phone: row[3],
-                        gender: row[4],
-                      };
-              
-                      contacts.push(contact);
-                    });
+                    let data = await Contact.deleteOne({ phone: contact.phone }).catch((e) => {
+                        importError.push({ data: contact, e })
+                    })
 
-                    for(let i = 0; i < contacts.length; i++) {
-
-                        updatedContacts = await Contact.deleteMany(
-                            {phone: contacts[i].phone}
-                        )
-                    }
-    
-                    if(updatedContacts) {
-    
-                        res.status(200).json({
-                            message: `Contacts deleted successfully: ${originalname}`,
-                            data: updatedContacts,
-                            success: 1,
-                        })
-                        
-                    } else {
-    
-                        res.status(500).json({
-                            message: `Failed to import data into database`,
-                            success: 0,
-                        })
-    
-                    }
+                    importData.push(data)
                 })
-            }
-
-
+            )
           
+            return success(res, 200, { importData, importError })
         } catch (e) {
-            throw e
+            return error(res, 500, e)
         }
     })
 }
-
-
 
 export default ContactController;

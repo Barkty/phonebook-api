@@ -94,9 +94,7 @@ export const downloadCSVFileETL = (fileLocation) => new Promise((resolve) => {
     });
 
 // extract excel file from local storage
-export const downloadExcelFileETL = async (filename) => {
-    // eslint-disable-next-line no-undef
-    const path = `${__basedir}\\${filename}`;
+export const downloadExcelFileETL = async (path) => {
     const rows = await readXlsxFile(path)
     const keys = rows[0];
     rows.shift()

@@ -1,5 +1,6 @@
 import { Router } from "express";
-import contactRoutes from '../models/Contact.js'
+import authRoutes from './Auth.js'
+import contactRoutes from './Contact.js'
 
 const router = Router();
 
@@ -10,6 +11,7 @@ router.get("/", (req, res) => {
   });
 });
 
+router.use('/auth', authRoutes)
 router.use('/contact', contactRoutes)
 
 export default router;

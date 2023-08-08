@@ -4,13 +4,10 @@ import { openRoutes } from "./request.js";
 import { error } from "../helpers/response.js";
 
 const authMiddleware = asyncWrapper(async (req, res, next) => {
-    const isOpenRoute = openRoutes.some((route) => req.method === route.method && req.path === route.path);
-    const isExposedRoute = exposedRoutes.some((route) => req.method === route.method && req.path.includes(route.path));
-    if (isOpenRoute) return next();
-    if (!req.isAuthenticated() && req.path === firstTimerVerifyRoute) return validateFirstTimerAccount(req, res, next);
-    if (!req.isAuthenticated() && isExposedRoute) return authenticateAPIRequest(req, res, next);
-    if (req.isAuthenticated() && !req.user.isController) return next();
-    return error(res, 401, "You are not logged in");
+  const isOpenRoute = openRoutes.some((route) => req.method === route.method && req.path === route.path);
+  if (isOpenRoute) return next();
+  if (req.isAuthenticated() && !req.user.isController) return next();
+  return error(res, 401, "You are not logged in");
 });
   
 export const validateUsersAuthRequest = (req, res, next) =>

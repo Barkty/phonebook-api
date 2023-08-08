@@ -31,8 +31,6 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: "3MB" }));
 app.use(express.urlencoded({ extended: false }));
 
-app.use(notFound);
-
 const server = http.createServer(app);
 
 const getOrigin = (origin, callback) => {
@@ -91,10 +89,6 @@ app.use(notFound);
 app.use(errorHandlerMiddleware);
 app.use(rateLimiter);
 app.use(apiBusy);
-
-app.use(cors(corsOptions));
-
-app.use("/api", routes);
 
 io.attach(server, {
     cors: {
