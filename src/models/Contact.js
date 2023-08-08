@@ -24,7 +24,7 @@ const schema = new Schema(
             maxLength: 15,
         },
         gender: String,
-        userId: { type: Schema.Types.ObjectId, required: true, ref: "User" }
+        userId: { type: Schema.Types.ObjectId, ref: "User" }
     },
     { toJSON: { virtuals: true }, toObject: { virtuals: true }, timestamps: true }
 )

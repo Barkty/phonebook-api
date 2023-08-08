@@ -20,10 +20,10 @@ class ContactController {
         try {
             
             const {
-                body: { phone }, file, user: { _id }
+                body: { phone }, file
             } = req;
 
-            let query = { ...req.body, userId: ObjectId(_id) }
+            let query = { ...req.body }
 
             if (file?.path) {
                 query = { ...query, avatar: file?.path }
@@ -51,9 +51,9 @@ class ContactController {
     getContacts = asyncWrapper(async (req, res) => {
     
         try {
-            const { query: { page, limit }, user: { _id } } = req;
+            const { query: { page, limit } } = req;
 
-            const filter = generateFilter({...req.query, userId: _id })
+            const filter = generateFilter(req.query)
 
             const options = { page, limit, filter, modelName: "Contact", sort: { createdAt: -1 }}
 
@@ -138,7 +138,7 @@ class ContactController {
 
         try {
 
-            const { file: { path }, user: { _id } } = req
+            const { file: { path } } = req
 
             const rows = await downloadExcelFileETL(path)
 
@@ -151,8 +151,7 @@ class ContactController {
                         firstName: row["First name"],
                         lastName: row["Last name"],
                         phone: row["Phone"],
-                        gender: row["Gender"],
-                        userId: _id
+                        gender: row["Gender"]
                     };
 
                     let data = await Contact.create(contact).catch((e) => {
@@ -177,7 +176,7 @@ class ContactController {
 
         try {
 
-            const { file: { path }, user: { _id } } = req
+            const { file: { path } } = req
 
             const rows = await downloadExcelFileETL(path)
 
@@ -190,8 +189,7 @@ class ContactController {
                         firstName: row["First name"],
                         lastName: row["Last name"],
                         phone: row["Phone"],
-                        gender: row["Gender"],
-                        userId: _id
+                        gender: row["Gender"]
                     };
 
                     let data = await Contact.updateOne({ phone: contact.phone }, { $set: { ...contact }}, { new: true }).catch((e) => {
@@ -235,7 +233,7 @@ class ContactController {
 
         try {
 
-            const { file: { path }, user: { _id } } = req
+            const { file: { path } } = req
 
             const rows = await downloadExcelFileETL(path)
 
@@ -248,8 +246,7 @@ class ContactController {
                         firstName: row["First name"],
                         lastName: row["Last name"],
                         phone: row["Phone"],
-                        gender: row["Gender"],
-                        userId: _id
+                        gender: row["Gender"]
                     };
 
                     let data = await Contact.deleteOne({ phone: contact.phone }).catch((e) => {

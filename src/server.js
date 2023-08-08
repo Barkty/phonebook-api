@@ -82,7 +82,7 @@ global.__basedir = __dirname;
 app.use(passport.authenticate("session"));
 
 // Routes
-app.use(`/api/`, authMiddleware, routes);
+app.use(`/api/`, routes);
 
 // Use middlewares
 app.use(notFound);
